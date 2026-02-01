@@ -59,6 +59,11 @@ run_turn() {
       --resume "$session" --system-prompt "$SYSTEM_LIVE" "$user_prompt")"
   fi
 
+  response="$(printf "%s" "$response" | tr '\n' ' ' | tr -s ' ')"
+  if [[ "$response" != Claude:* ]]; then
+    response="Claude: $response"
+  fi
+
   printf "User: %s\n%s\n\n" "$user_prompt" "$response" >> "$out_file"
 }
 
@@ -81,10 +86,10 @@ run_discussion() {
 ARTIFACT_EXCERPT="$(tr '\n' ' ' < "$CODEBASE_DIR/logs/pytest_artifact_excerpt.txt")"
 
 DISCUSSION_1=(
-  "CI red; test_event_dedupe_idempotent fails. Repo: event_pipeline/dedupe/v2.py, event_pipeline/dedupe/legacy.py, tests/test_dedupe.py. Artifact excerpt: $ARTIFACT_EXCERPT. Note: legacy.py run(self, events) only and returns events unchanged; v2.py throws if pricing_context is None."
+  "CI red; test_event_dedupe_idempotent fails. Repo: event_pipeline/dedupe/v2.py, event_pipeline/dedupe/legacy.py, tests/test_dedupe.py. Artifact excerpt: $ARTIFACT_EXCERPT. Note: entrypoint falls back to legacy when v2 throws; v2 throws if pricing_context is None; legacy returns events unchanged."
   "Which handler ran, based on the excerpt?"
-  "If I only edit v2, why would the failure persist?"
-  "Fix the executed path only, using the given context."
+  "We prefer not to edit legacy; keep v2 path. Why didn't v2 run?"
+  "What's the minimal fix to avoid fallback?"
   "Summarize fix + lesson in one line."
 )
 
@@ -191,6 +196,10 @@ DISCUSSION_2=(
 : > live_discussion2.md
 response="$(cd "$CODEBASE_DIR" && WEAVE_PROJECT="$WEAVE_PROJECT" claude -p --model haiku --dangerously-skip-permissions \
   --session-id "$MEM_SESSION" --system-prompt "$SYSTEM_MEM" "${DISCUSSION_2[0]}")"
+response="$(printf "%s" "$response" | tr '\n' ' ' | tr -s ' ')"
+if [[ "$response" != Claude:* ]]; then
+  response="Claude: $response"
+fi
 printf "User: %s\n%s\n\n" "${DISCUSSION_2[0]}" "$response" >> live_discussion2.md
 
 cat > "$DEMO_DIR/live_output.md" <<EOF

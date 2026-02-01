@@ -2,7 +2,7 @@
 
 One-liner: Smart memory for LLM coding assistants that turns historical long painful discussions into one-shot fixes.
 
-YouTube demo: https://www.youtube.com/watch?v=Z7IsFoGBSHk
+[![Demo video](https://img.youtube.com/vi/Z7IsFoGBSHk/hqdefault.jpg)](https://www.youtube.com/watch?v=Z7IsFoGBSHk)
 
 ## Summary (2-3 sentences)
 

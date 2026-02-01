@@ -12,7 +12,8 @@ One-liner: Smart memory for LLM coding assistants that turns historical long pai
   - A team-shared MCP that conceptualizes where you get stuck and remembers.
   - A manual workaround is to add lessons to `AGENTS.md`, create skills, or write custom prompts - but a self-learning system is the natural evolution. To do it properly, you need to study history, extract knowledge, store it for the whole team, and inject it into the prompt.
   - That is what we do: trace Claude with Weave, analyze, store in Redis, and inject back into Claude.
-  - The memory is hybrid-smart: the AI figures out which schemas and templates to use.
+  - Smart memory uses llm to come up with memory architecture; in addition, it uses human-curated templates (Known Error Report, Critical Decisions, System Architecture Principles).
+  - Smart memory process: encode experience, distill it, store it, retrieve it, and manage it.
 
 ## Screenshots
 

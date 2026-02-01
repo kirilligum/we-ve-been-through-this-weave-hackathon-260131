@@ -88,8 +88,8 @@ ARTIFACT_EXCERPT="$(tr '\n' ' ' < "$CODEBASE_DIR/logs/pytest_artifact_excerpt.tx
 DISCUSSION_1=(
   "CI red; test_event_dedupe_idempotent fails. Repo: event_pipeline/dedupe/v2.py, event_pipeline/dedupe/legacy.py, tests/test_dedupe.py. Artifact excerpt: $ARTIFACT_EXCERPT. Note: entrypoint falls back to legacy when v2 throws; v2 throws if pricing_context is None; legacy returns events unchanged."
   "Which handler ran, based on the excerpt?"
-  "We prefer not to edit legacy; keep v2 path. Why didn't v2 run?"
-  "What's the minimal fix to avoid fallback?"
+  "We prefer not to edit legacy; keep v2 path. Why didn't v2 run, and where would you add a minimal default pricingContext?"
+  "What's the minimal fix to avoid fallback and keep v2?"
   "Summarize fix + lesson in one line."
 )
 
@@ -155,10 +155,18 @@ if [[ "$create_response" == "Internal Server Error" ]]; then
   echo "then restart: uv run agent-memory api"
 fi
 
-# Fetch back to prove it is in Redis
-redis_search_response="$(curl -s "$API_BASE/v1/long-term-memory/search" \
-  -H "Content-Type: application/json" \
-  -d '{"text":"","user_id":{"eq":"wbtt-demo"},"namespace":{"eq":"wbtt"},"limit":3}')"
+# Fetch back to prove it is in Redis (retry in case indexing is async)
+search_payload='{"text":"Dedupe failure caused by legacy fallback","user_id":{"eq":"wbtt-demo"},"namespace":{"eq":"wbtt"},"limit":3}'
+redis_search_response=""
+for _ in 1 2 3; do
+  redis_search_response="$(curl -s "$API_BASE/v1/long-term-memory/search" \
+    -H "Content-Type: application/json" \
+    -d "$search_payload")"
+  if [[ "$redis_search_response" != *'"memories":[]'* ]]; then
+    break
+  fi
+  sleep 1
+done
 printf "%s" "$redis_search_response" > "$DEMO_DIR/redis_search.json"
 
 if [[ "$redis_search_response" == "Internal Server Error" ]]; then

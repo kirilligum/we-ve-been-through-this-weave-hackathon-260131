@@ -16,10 +16,9 @@ if ! redis-cli ping >/dev/null 2>&1; then
 fi
 
 if ! redis-cli MODULE LIST | grep -q "search"; then
-  echo "RediSearch module not loaded. Install and restart Redis:"
-  echo "  sudo apt install redis-redisearch"
-  echo "  redis-server --loadmodule /usr/lib/redis/modules/redisearch.so --save \"\" --appendonly no"
-  exit 1
+  echo "RediSearch module not loaded. Falling back to demo vectorstore."
+  echo "Start agent-memory-server with:"
+  echo "  set -x VECTORSTORE_FACTORY agent_memory_server.wbtt.demo_vectorstore.create_demo_vectorstore"
 fi
 
 if ! curl -s "$API_BASE/v1/health" >/dev/null 2>&1; then

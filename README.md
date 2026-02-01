@@ -16,12 +16,14 @@ WBTT captures real multi-step debugging conversations from Claude Code in W&B We
 
 ## System architecture
 
-```
-Claude Code
-  -> Weave Claude plugin (hooks) -> Weave traces + W&B run artifacts
-  -> MemEvolve distillation (memory artifact)
-  -> Redis Agent Memory Server (MCP)
-  -> memory_prompt injection back into Claude Code
+```mermaid
+flowchart LR
+  A["Claude Code"] --> B["Weave Claude plugin (hooks)"]
+  B --> C["Weave traces + W&B run artifacts"]
+  C --> D["MemEvolve distillation<br/>(memory artifact)"]
+  D --> E["Redis Agent Memory Server<br/>(MCP)"]
+  E --> F["memory_prompt injection"]
+  F --> A
 ```
 
 ## How it is built (agentic logic, data flow, MCP)
@@ -96,6 +98,19 @@ Confirm Redis is running:
 
 ```
 redis-cli ping
+```
+
+For full search-backed memory, Redis must include RediSearch:
+
+```
+sudo apt install redis-redisearch
+redis-server --loadmodule /usr/lib/redis/modules/redisearch.so --save "" --appendonly no
+```
+
+If RediSearch isn’t available, use the WBTT demo vectorstore (no RediSearch needed):
+
+```
+set -x VECTORSTORE_FACTORY agent_memory_server.wbtt.demo_vectorstore.create_demo_vectorstore
 ```
 
 ### 2) Start the Agent Memory Server (Redis + MCP)

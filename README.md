@@ -26,6 +26,8 @@ flowchart LR
   F --> A
 ```
 
+![Claude response with WBTT MCP](./wbtt-claude-good.png)
+
 ## How it is built (agentic logic, data flow, MCP)
 
 1. Claude Code session is traced to W&B Weave using the claude_plugin hooks (session, user prompts, tool calls).

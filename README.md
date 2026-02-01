@@ -26,6 +26,9 @@ Weave tracing: Claude Code traces are automatically picked up in the Weave UI.
 Redis storage: memory artifacts are stored in Redis for retrieval and injection.
 ![Redis snapshot](./wbtt-redis.png)
 
+[Image #1] Weave trace view for Claude Code LLM traces:
+https://wandb.ai/kirill-igum-prls-co/we-ve-been-through-this-weave-hackathon-260131/weave/traces?view=traces_default
+
 ## What it does / why it is useful
 
 - Eliminates repeated multi-turn debugging loops for recurring issues.
@@ -152,14 +155,20 @@ uv run agent-memory mcp
 
 #### Demo context (used by the LCA)
 
-Context: We are in an event ingestion repo. The failing test is `tests/test_event_dedupe_idempotent.py`.
-There are two dedupe implementations: `dedupe/v2/` and `dedupe/legacy/`.
-Pipeline selection is logged on startup as `selected_pipeline=...` (top of the W&B pytest artifact).
-If `DEDUPER=v2` is unset or v2 throws, the system falls back to `legacy_fallback`.
-v2 expects `event.metadata.pricingContext.currency`; if missing it throws, which triggers fallback.
+We include a synthetic repo for realism at `demo_codebase/`:
+
+- `demo_codebase/event_pipeline/dedupe/entrypoint.py`
+- `demo_codebase/event_pipeline/dedupe/v2.py`
+- `demo_codebase/event_pipeline/dedupe/legacy.py`
+- `demo_codebase/tests/test_dedupe.py`
+- `demo_codebase/logs/pytest_artifact_excerpt.txt`
+
+Context: The failing test is `tests/test_dedupe.py::test_event_dedupe_idempotent`.
+There are two dedupe implementations: `dedupe/v2.py` and `dedupe/legacy.py`.
+Pipeline selection is logged on startup as `selected_pipeline=...` (top of the pytest artifact excerpt).
+If v2 throws (missing `pricingContext.currency`), the system falls back to `legacy_fallback`.
 Legacy and v2 are duplicated; editing the wrong path will not affect runtime.
-The full pytest artifact is stored in the W&B run; terminal snippets are truncated.
-Key fix pattern: derive minimal `pricingContext` at entrypoint + make legacy a shim to v2 or set `DEDUPER=v2` for tests.
+Key fix pattern: derive minimal `pricingContext` at entrypoint to keep v2 on-path.
 
 This runs the three discussions and writes a clean dialog transcript with User + Claude lines:
 
@@ -250,7 +259,7 @@ Claude: Fix: confirm selected_pipeline from full artifact, then make legacy dele
 
 ### 4) Full live demo (Weave traces + Redis memory)
 
-This runs a real Claude Code conversation (traced in Weave), distills a MemEvolve-style artifact, writes a KER, stores memory in Redis, and then fetches it back so you can show it.
+This runs a real Claude Code conversation (traced in Weave), distills a MemEvolve-style artifact, writes a KER to `ker/`, stores memory in Redis, and then fetches it back so you can show it. The live demo uses **two discussions**: a historical multi-turn chat and a memory-injected one-shot follow-up.
 
 ```
 bash scripts/run_live_demo.sh
@@ -260,6 +269,7 @@ Outputs:
 
 - `demo_claude/live_output.md` (live dialog + Redis proof + memory prompt)
 - `demo_claude/live_discussion1.md`
+- `demo_claude/live_discussion2.md`
 - `demo_claude/live_session_ids.txt`
 - `demo_claude/memory_payload.json`
 - `demo_claude/redis_search.json`
@@ -283,7 +293,7 @@ cat demo_claude/memory_prompt.json
 - Run Discussion 1 and confirm the trace appears in W&B.
 - Distill a MemEvolve memory artifact from the trace and store it in Redis via MCP tools.
 - Run Discussion 2 with `memory_prompt` injection.
-- Run Discussion 3 with memory disabled.
+- (Optional) Run Discussion 3 with memory disabled if you want to show the long-loop again.
 
 ## Repo layout
 

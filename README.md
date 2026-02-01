@@ -6,7 +6,13 @@ One-liner: Self-learning system-architecture and engineering memory for LLM codi
 
 ## Summary (2-3 sentences)
 
-WBTT captures real multi-step debugging conversations from Claude Code in W&B Weave, distills them into reusable memory artifacts with MemEvolve, and stores them in Redis. When a similar issue appears later, the assistant retrieves that abstract memory via MCP and resolves the problem in one or two steps instead of 10-30. This demonstrates self-learning agents that improve their software engineering and system-architecture efficiency over time.
+- Problem
+  - We lose hours and millions of tokens getting stuck on conceptually similar issues in Claude Code. It gets even worse in teams where knowledge is shared ad hoc.
+- Solution
+  - A team-shared MCP that conceptualizes where you get stuck and remembers.
+  - A manual workaround is to add lessons to `AGENTS.md`, create skills, or write custom prompts - but a self-learning system is the natural evolution. To do it properly, you need to study history, extract knowledge, store it for the whole team, and inject it into the prompt.
+  - That is what we do: trace Claude with Weave, analyze, store in Redis, and inject back into Claude.
+  - The memory is hybrid-smart: the AI figures out which schemas and templates to use.
 
 ## What it does / why it is useful
 

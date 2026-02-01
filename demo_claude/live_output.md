@@ -2,42 +2,61 @@
 
 ## Discussion 1 (historical, live run)
 
-User: CI is red again; test_event_dedupe_idempotent fails; run ci-19702 has logs.
-Claude: I'll help you investigate the failing test—let me check the CI logs from run ci-19702 to see what's causing `test_event_dedupe_idempotent` to fail.
+User: CI red; test_event_dedupe_idempotent fails. Repo: event_pipeline/dedupe/v2.py, event_pipeline/dedupe/legacy.py, tests/test_dedupe.py. Artifact excerpt: [INFO] selected_pipeline=legacy_fallback [WARNING] fallback warning: using legacy_fallback due to missing pricingContext.currency E   AssertionError: expected 1 event, got 2 . Note: legacy.py returns events unchanged; v2.py throws if pricing_context is None.
+Claude: The test fails because `legacy.py` passes through unparsed events when `pricing_context.currency` is missing, while `v2.py` requires it—`legacy_fallback` returns 2 events (original + duplicate), but the deduplication expects 1; fix by validating `pricing_context.currency` exists before falling back to legacy in the pipeline selector.
 
-Could you provide either the CI log link or more details about what the test failure shows? That will help me pinpoint the issue quickly.
+User: Which handler ran, based on the excerpt?
+Claude: The `legacy_fallback` handler ran, as indicated by the `[INFO] selected_pipeline=legacy_fallback` log in the artifact excerpt.
 
-User: Use the full W&B artifact; don't infer from partial output.
-Claude: I need the actual CI logs from run ci-19702 to investigate—can you share the log artifact or link so I can see the exact test failure details?
+User: If I only edit v2, why would the failure persist?
+Claude: Because `legacy_fallback` selected `legacy.py` as the handler—editing only `v2.py` won't affect the code path that's actually running; you must either fix `legacy.py` or change the pipeline selection logic to use `v2.py` instead.
 
-User: What handler ran in that run?
-Claude: I can see a Weave tracing session is active, but I need you to share the actual CI logs or W&B artifact link from run ci-19702 to see what handler ran and why `test_event_dedupe_idempotent` failed.
-
-User: Still failing; you're not changing what is executed.
-Claude: The W&B page isn't exposing the artifact content via fetch. Do you have a direct link to the ci-19702 logs file, or can you paste the test failure output here?
-
-User: Open the full pytest artifact; terminal output truncates.
-Claude: I need the actual artifact URL or file path to access the full pytest output—can you share the direct link to the ci-19702 test logs or the W&B artifact ID?
-
-User: Search for selected_pipeline or fallback.
-Claude: The files don't exist in the expected location. Can you provide the actual path to the ci-19702 test logs or W&B artifact so I can examine the full output?
-
-User: Start from the top; pipeline is logged on startup.
-Claude: Can you point me to the project root or test file location? I need to search the actual codebase, not the conversation logs.
-
-User: So fix legacy path, not v2.
-Claude: No Python files found with those terms. Can you provide the project directory path so I can search the actual codebase?
-
-User: Also address missing pricingContext warning.
-Claude: I need the project directory path to search for the legacy path code and `pricingContext` warning—can you provide the repo location?
+User: Fix the executed path only, using the given context.
+Claude: Fix `legacy.py` to validate `pricing_context.currency` before returning events, preventing the duplicate from passing through when the currency is missing.
 
 User: Summarize fix + lesson in one line.
-Claude: I still need the project path to locate the failing test and `pricingContext` warning—without it, I can't provide the fix and lesson you're asking for.
+Claude: Add `pricing_context.currency` validation in `legacy.py` before returning events—the fallback handler must enforce the same constraints as the primary handler to prevent duplicates from bypassing deduplication logic.
+
+## Discussion 2 (with memory injection)
+
+User: CI red again; same test. Repo: event_pipeline/dedupe/v2.py, event_pipeline/dedupe/legacy.py. Artifact excerpt: [INFO] selected_pipeline=legacy_fallback [WARNING] fallback warning: using legacy_fallback due to missing pricingContext.currency E   AssertionError: expected 1 event, got 2 
+Perfect! ✅ **Fix successful!** 
+
+## Summary
+
+The issue was in the **entrypoint's fallback logic**. When `pricing_context=None` was passed to the test, the v2 dedupe would fail trying to access `pricing_context["currency"]`, triggering an exception fallback to the legacy implementation. The legacy implementation doesn't actually deduplicate—it just returns events as-is, causing the test to fail with "expected 1 event, got 2".
+
+### The Fix
+
+I added a **`_derive_minimal_context()` method** that creates a minimal pricingContext with a default currency (`USD`) when one isn't provided:
+
+```python
+def run(self, events, pricing_context=None):
+    if self.env.get("DEDUPER") != "v2":
+        self._log_selected("legacy_fallback")
+        return self.legacy.run(events)
+
+    # Derive minimal pricingContext at entrypoint if missing.
+    if pricing_context is None:
+        pricing_context = self._derive_minimal_context()
+
+    try:
+        return self.v2.run(events, pricing_context=pricing_context)
+    except Exception:
+        self._log_selected("legacy_fallback")
+        return self.legacy.run(events)
+
+def _derive_minimal_context(self):
+    """Derive minimal pricingContext with required currency."""
+    return {"currency": "USD"}
+```
+
+This ensures v2 never fails due to missing currency, allowing proper deduplication to occur. The test now passes! 🎉
 
 ## Redis: memory search (proof)
 
-{"memories":[],"total":0,"next_offset":null}
+{"memories":[{"id":"wbtt-live-20260201222739","text":"title: Dedupe failure caused by legacy fallback\nroot_cause: Unknown\nfix_steps:\n- derive minimal pricingContext at entrypoint","session_id":null,"user_id":"wbtt-demo","namespace":"wbtt","last_accessed":"2026-02-01T22:27:39.524842Z","created_at":"2026-02-01T22:27:39.524850Z","updated_at":"2026-02-01T22:27:39.524852Z","pinned":false,"access_count":0,"topics":null,"entities":null,"memory_hash":null,"discrete_memory_extracted":"f","memory_type":"semantic","persisted_at":null,"extracted_from":null,"event_date":null,"extraction_strategy":"discrete","extraction_strategy_config":{},"dist":1.0}],"total":1,"next_offset":null}
 
 ## Redis: memory_prompt (injection block)
 
-{"messages":[{"role":"system","content":{"type":"text","text":"## Long term memories related to the user's query\n No relevant long-term memories found.","annotations":null,"_meta":null}},{"role":"user","content":{"type":"text","text":"test_event_dedupe_idempotent fails","annotations":null,"_meta":null}}]}
+{"messages":[{"role":"system","content":{"type":"text","text":"## Long term memories related to the user's query\n - title: Dedupe failure caused by legacy fallback\nroot_cause: Unknown\nfix_steps:\n- derive minimal pricingContext at entrypoint (ID: wbtt-live-20260201222739)","annotations":null,"_meta":null}},{"role":"user","content":{"type":"text","text":"Dedupe failure caused by legacy fallback","annotations":null,"_meta":null}}]}

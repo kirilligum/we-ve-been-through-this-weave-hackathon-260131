@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DEMO_DIR="$ROOT_DIR/demo_claude"
+CODEBASE_DIR="$ROOT_DIR/demo_codebase"
 mkdir -p "$DEMO_DIR"
 cd "$DEMO_DIR"
 
@@ -31,7 +32,10 @@ fi
 
 SYSTEM_LIVE=$(cat <<'EOF'
 You are Claude Code in a live demo. Reply with exactly one short line starting with "Claude:".
-Do not use tools. Stay concise. Use the user's evidence if mentioned.
+Do not use tools. Stay concise. Use only the evidence provided in the user prompt.
+Assume the repo exists at ./demo_codebase and the excerpt is authoritative.
+Do not ask for files or links; answer directly using the prompt.
+Output exactly one line, no extra lines, no questions.
 EOF
 )
 
@@ -48,10 +52,10 @@ run_turn() {
   local response=""
 
   if [[ "$mode" == "new" ]]; then
-    response="$(WEAVE_PROJECT="$WEAVE_PROJECT" claude -p --model haiku --dangerously-skip-permissions \
+    response="$(cd "$CODEBASE_DIR" && WEAVE_PROJECT="$WEAVE_PROJECT" claude -p --model haiku --dangerously-skip-permissions \
       --session-id "$session" --system-prompt "$SYSTEM_LIVE" "$user_prompt")"
   else
-    response="$(WEAVE_PROJECT="$WEAVE_PROJECT" claude -p --model haiku --dangerously-skip-permissions \
+    response="$(cd "$CODEBASE_DIR" && WEAVE_PROJECT="$WEAVE_PROJECT" claude -p --model haiku --dangerously-skip-permissions \
       --resume "$session" --system-prompt "$SYSTEM_LIVE" "$user_prompt")"
   fi
 
@@ -74,16 +78,13 @@ run_discussion() {
   done
 }
 
+ARTIFACT_EXCERPT="$(tr '\n' ' ' < "$CODEBASE_DIR/logs/pytest_artifact_excerpt.txt")"
+
 DISCUSSION_1=(
-  "CI is red again; test_event_dedupe_idempotent fails; run ci-19702 has logs."
-  "Use the full W&B artifact; don't infer from partial output."
-  "What handler ran in that run?"
-  "Still failing; you're not changing what is executed."
-  "Open the full pytest artifact; terminal output truncates."
-  "Search for selected_pipeline or fallback."
-  "Start from the top; pipeline is logged on startup."
-  "So fix legacy path, not v2."
-  "Also address missing pricingContext warning."
+  "CI red; test_event_dedupe_idempotent fails. Repo: event_pipeline/dedupe/v2.py, event_pipeline/dedupe/legacy.py, tests/test_dedupe.py. Artifact excerpt: $ARTIFACT_EXCERPT. Note: legacy.py returns events unchanged; v2.py throws if pricing_context is None."
+  "Which handler ran, based on the excerpt?"
+  "If I only edit v2, why would the failure persist?"
+  "Fix the executed path only, using the given context."
   "Summarize fix + lesson in one line."
 )
 
@@ -164,8 +165,31 @@ fi
 # Memory prompt (what would be injected)
 memory_prompt_response="$(curl -s "$API_BASE/v1/memory/prompt" \
   -H "Content-Type: application/json" \
-  -d '{"query":"test_event_dedupe_idempotent fails","long_term_search":{"text":"","user_id":{"eq":"wbtt-demo"},"namespace":{"eq":"wbtt"},"limit":3}}')"
+  -d '{"query":"Dedupe failure caused by legacy fallback","long_term_search":{"text":"Dedupe failure caused by legacy fallback","user_id":{"eq":"wbtt-demo"},"namespace":{"eq":"wbtt"},"limit":3}}')"
 printf "%s" "$memory_prompt_response" > "$DEMO_DIR/memory_prompt.json"
+
+SYSTEM_MEM="$(python - <<'PY'
+import json
+data = json.load(open("memory_prompt.json"))
+messages = data.get("messages", [])
+system_msgs = [m for m in messages if m.get("role") == "system"]
+if system_msgs:
+    content = system_msgs[0].get("content", {})
+    text = content.get("text", "")
+    print(text)
+else:
+    print("")
+PY
+)"
+
+DISCUSSION_2=(
+  "CI red again; same test. Repo: event_pipeline/dedupe/v2.py, event_pipeline/dedupe/legacy.py. Artifact excerpt: $ARTIFACT_EXCERPT"
+)
+
+: > live_discussion2.md
+response="$(cd "$CODEBASE_DIR" && WEAVE_PROJECT="$WEAVE_PROJECT" claude -p --model haiku --dangerously-skip-permissions \
+  --session-id "$MEM_SESSION" --system-prompt "$SYSTEM_MEM" "${DISCUSSION_2[0]}")"
+printf "User: %s\n%s\n\n" "${DISCUSSION_2[0]}" "$response" >> live_discussion2.md
 
 cat > "$DEMO_DIR/live_output.md" <<EOF
 # WBTT Live Demo Output
@@ -173,6 +197,10 @@ cat > "$DEMO_DIR/live_output.md" <<EOF
 ## Discussion 1 (historical, live run)
 
 $(cat live_discussion1.md)
+
+## Discussion 2 (with memory injection)
+
+$(cat live_discussion2.md)
 
 ## Redis: memory search (proof)
 

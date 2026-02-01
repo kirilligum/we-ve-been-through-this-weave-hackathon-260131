@@ -30,7 +30,7 @@ One-liner: Self-learning system-architecture and engineering memory for LLM codi
 flowchart TD
   A["Claude Code"] --> B["Weave Claude plugin (hooks)"]
   B --> C["Weave traces + W&B run artifacts"]
-  C --> D["MemEvolve distillation<br/>(memory artifact)"]
+  C --> D["MemEvolve distillation<br/>(memory artifact)<br/>Known Error Report, Critical Decisions, System Architecture Principles"]
   D --> E["Redis Agent Memory Server<br/>(MCP)"]
   E --> F["memory_prompt injection"]
   F --> A

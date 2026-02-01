@@ -1,10 +1,10 @@
-# We've Been Through This (WBTT)
+# We've Been Through This (WBTT) -- WeaveHacks 3 -- Self-Improving Agents
 
-One-liner: Self-learning memory for LLM coding assistants that turns repeated debugging loops into one-shot fixes.
+One-liner: Self-learning system-architecture and engineering memory for LLM coding assistants that turns historical long discussions into one-shot fixes.
 
 ## Summary (2-3 sentences)
 
-WBTT captures real multi-step debugging conversations from Claude Code in W&B Weave, distills them into reusable memory artifacts with MemEvolve, and stores them in Redis. When a similar issue appears later, the assistant retrieves that memory via MCP and resolves the problem in one or two steps instead of 10-30. This demonstrates self-learning agents that improve their debugging efficiency over time.
+WBTT captures real multi-step debugging conversations from Claude Code in W&B Weave, distills them into reusable memory artifacts with MemEvolve, and stores them in Redis. When a similar issue appears later, the assistant retrieves that abstract memory via MCP and resolves the problem in one or two steps instead of 10-30. This demonstrates self-learning agents that improve their software engineering and system-architecture efficiency over time.
 
 ## What it does / why it is useful
 
@@ -124,6 +124,13 @@ Key fix pattern: derive minimal `pricingContext` at entrypoint + make legacy a s
 ## How to run (live demo)
 
 ### 1) Start Redis
+```
+redis-server --save "" --appendonly no
+```
+Confirm Redis is running:
+```
+redis-cli ping
+```
 
 ### 2) Start the Agent Memory Server (Redis + MCP)
 

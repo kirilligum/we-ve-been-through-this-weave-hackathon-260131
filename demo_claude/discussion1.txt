@@ -1,0 +1,10 @@
+Claude: I'll adjust the v2 dedupe key.
+Claude: Log shows expected 1 got 2; still looks like v2.
+Claude: It should be v2; I'll make v2 stricter.
+Claude: Maybe we need more runtime context.
+Claude: I didn't see anything else.
+Claude: No matches; maybe I missed earlier lines.
+Claude: Found it now: selected_pipeline=legacy_fallback.
+Claude: Right; patch legacy to delegate to v2 and set DEDUPER=v2.
+Claude: Entrypoint should derive pricingContext so v2 doesn't throw.
+Claude: Fix: confirm selected_pipeline from full artifact, then make legacy delegate to v2 and derive pricingContext; lesson: verify executed path before editing.

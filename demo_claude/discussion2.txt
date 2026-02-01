@@ -1,0 +1,1 @@
+Claude: Memory says check selected_pipeline in full artifact; it is legacy_fallback, so I derived pricingContext and made legacy delegate to v2; CI passes.

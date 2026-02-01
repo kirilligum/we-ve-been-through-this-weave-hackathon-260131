@@ -1,0 +1,29 @@
+{
+  "correction_turn_count": 3,
+  "corrections": [
+    "Remove fallback paths; single deterministic path only.",
+    "Eliminate duplicated steps or sections.",
+    "Add fail-fast checks for missing configuration."
+  ],
+  "memory_applied": false,
+  "memory_namespace": "slg-run-5a4bae5c0beb",
+  "mode": "scripted",
+  "prompt_id": "prompt_a",
+  "run_id": "run-5a4bae5c0beb",
+  "turn_count": 2,
+  "turns": [
+    {
+      "content": "Implement the demo CLI with a deterministic scripted mode. Keep it simple and avoid extra modes.",
+      "role": "user"
+    },
+    {
+      "content": "Plan: add a fallback mode for safety [FALLBACK]. Also duplicate the configuration section for clarity [DUPLICATION]. We'll be lenient on missing keys [NO_FAIL_FAST].",
+      "role": "assistant"
+    }
+  ],
+  "violations": [
+    "Remove fallback paths; single deterministic path only.",
+    "Eliminate duplicated steps or sections.",
+    "Add fail-fast checks for missing configuration."
+  ]
+}

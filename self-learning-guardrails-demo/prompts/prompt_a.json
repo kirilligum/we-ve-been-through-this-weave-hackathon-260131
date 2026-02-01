@@ -1,0 +1,6 @@
+{
+  "prompt_id": "prompt_a",
+  "prompt": "Implement the demo CLI with a deterministic scripted mode. Keep it simple and avoid extra modes.",
+  "candidate_response": "Plan: add a fallback mode for safety [FALLBACK]. Also duplicate the configuration section for clarity [DUPLICATION]. We'll be lenient on missing keys [NO_FAIL_FAST].",
+  "compliant_response": "Plan: keep one deterministic path with explicit modes and fail fast on missing configuration."
+}

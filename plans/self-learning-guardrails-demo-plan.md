@@ -10,6 +10,9 @@ Design Consensus & Trade-offs (Derived from Chat Context)
 - Topic: Benchmark choice
   - Verdict: AGAINST long benchmark suites
   - Rationale: Large MemEvolve benchmarks take too long for hackathon timelines; demo must run in minutes.
+- Topic: Implementation style
+  - Verdict: FOR single deterministic scripted path; live mode is explicit, not a fallback
+  - Rationale: Keep one deterministic scripted path with no fallbacks; live mode is opt-in and fail-fast to avoid hidden complexity.
 - Topic: Demo location in repo
   - Verdict: FOR separate folder at repository root
   - Rationale: Hackathon root is /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131; demo should live alongside projects, not inside agent-memory-server.
@@ -22,6 +25,9 @@ Design Consensus & Trade-offs (Derived from Chat Context)
 - Topic: Prompt tuning
   - Verdict: FOR iterative prompt adjustment
   - Rationale: After scripted demo, prompt is tuned to achieve desired behavior in realistic runs.
+- Topic: Code simplicity vs micro-optimizations
+  - Verdict: FOR general code and smaller codebase
+  - Rationale: Prefer general, direct implementations over minor performance gains to keep the codebase compact.
 
 PRD (IEEE 29148 Stakeholder/System Needs)
 - Problem: Coding agents repeat the same correction loops (no fallbacks, no duplication, fail-fast), wasting time in hackathon demos.
@@ -30,7 +36,7 @@ PRD (IEEE 29148 Stakeholder/System Needs)
 - Business Goals: Show a compelling, fast, reproducible demo; align with “self-learning agents” theme.
 - Success Metrics:
   - Scripted demo turn reduction >= 50% from baseline run
-  - Demo runtime <= 2 minutes in mock mode
+  - Demo runtime <= 2 minutes in scripted mode
   - All required artifacts generated with deterministic content
 - Scope:
   - New demo folder at repo root with README, scripts, and tests
@@ -42,7 +48,7 @@ PRD (IEEE 29148 Stakeholder/System Needs)
   - Implementing full EvolveLab or Flash-Searcher integration
 - Dependencies:
   - agent-memory-server (Python, uv, pytest)
-  - Redis (for real runs), optional in mock mode
+  - Redis (for scripted and live runs)
 - Risks:
   - LLM nondeterminism in live mode
   - Missing OPENAI_API_KEY for live mode
@@ -56,21 +62,22 @@ SRS (IEEE 29148 Canonical Requirements)
 - REQ-002 (func): Provide a scripted replay that simulates Prompt A + corrections and stores guardrail memory.
 - REQ-003 (func): Provide a memory injection rerun that uses stored guardrails to reduce correction turns.
 - REQ-004 (func): Emit structured artifacts (run logs, memory artifact, metrics summary) per run.
-- REQ-005 (func): Provide a CLI entrypoint for scripted runs and a mock mode that avoids external APIs.
+- REQ-005 (func): Provide a CLI entrypoint for scripted runs with deterministic inputs; no legacy or fallback modes.
 - REQ-006 (func): Provide an optional interactive mode for live prompting when API keys are present.
+- REQ-016 (nfr): No legacy modes, no fallbacks, no adapters; scripted mode is the single deterministic path and live mode is explicit and fail-fast.
 
 4.2 Non-functional Requirements
-- REQ-007 (nfr): Demo runtime <= 2 minutes in mock mode on a laptop.
-- REQ-008 (nfr): Deterministic scripted results with fixed seeds in mock mode.
-- REQ-009 (nfr): Fail-fast on missing config or required env vars in live mode.
+- REQ-007 (nfr): Demo runtime <= 2 minutes in scripted mode on a laptop.
+- REQ-008 (nfr): Deterministic scripted results with fixed inputs, seeds, and isolated memory namespace per run (cleared at start).
+- REQ-009 (nfr): Fail-fast on missing config, required env vars, or invalid flag combinations in live mode.
 
 4.3 Interfaces/APIs
-- REQ-010 (int): CLI interface in demo folder with flags: --mode (mock|live), --outdir, --interactive.
+- REQ-010 (int): CLI interface in demo folder with flags: --mode (scripted|live), --outdir, --interactive (valid only with --mode live).
 - REQ-011 (int): Memory server interface via agent_memory_client (search_memory, eagerly_create_long_term_memory, edit/delete as needed).
 
 4.4 Data Requirements
-- REQ-012 (data): Guardrail memory artifact schema includes hard_constraints, preferences, triggers, and verification rules.
-- REQ-013 (data): Run log schema includes turn counts, violations, and memory usage indicators.
+- REQ-012 (data): Guardrail memory artifact schema includes hard_constraints, architecture_preferences, clarifying_triggers, and verification_rules.
+- REQ-013 (data): Run log schema includes turn counts, violations, and memory usage indicators (memory_hit or memory_applied).
 
 4.5 Error & Telemetry Expectations
 - REQ-014 (nfr): Structured error messages for missing keys, server unreachable, or invalid config.
@@ -105,10 +112,13 @@ Iterative Implementation & Test Plan (ISO/IEC/IEEE 12207 + 29119-3)
 - Risk Register:
   - Risk: Live mode nondeterminism
     - Trigger: Metric regression in live run
-    - Mitigation: Default to mock mode, keep live optional
+    - Mitigation: Scripted mode is the primary deterministic path; live mode is explicit and fail-fast
   - Risk: Redis/Memory server not running
     - Trigger: Connection errors
-    - Mitigation: Mock mode and explicit fail-fast checks
+    - Mitigation: Explicit fail-fast checks and clear remediation
+  - Risk: Cross-run memory contamination
+    - Trigger: Non-deterministic scripted results or unexpected turn counts
+    - Mitigation: Namespace memory by run_id and clear namespace at start of each scripted run
   - Risk: Prompt drift
     - Trigger: Behavior deviates from constraints
     - Mitigation: Configurable prompt files and retriable memory extraction
@@ -145,10 +155,10 @@ Iterative Implementation & Test Plan (ISO/IEC/IEEE 12207 + 29119-3)
   - Confidence 65%, Long-term robustness 50%, Internal interactions 2, External interactions 0, Complexity 25%, Feature creep 10%, Technical debt 10%, YAGNI score 25%, MoSCoW: Must, Local/Non-local scope: Local, Architectural changes count: 1
 
 ### Phase P02: Scripted replay runner and artifacts
-- Scope and Objectives (Impacted REQ-003, REQ-004, REQ-005)
+- Scope and Objectives (Impacted REQ-003, REQ-004, REQ-005, REQ-013, REQ-015)
 - Iterative Execution Steps
   - Step 1 (RED): Create/update TEST-002 in self-learning-guardrails-demo/tests/test_scripted_replay.py for REQ-003, REQ-004 -> run `cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_scripted_replay.py -k test_scripted_replay_outputs` -> expected: FAIL (runner missing)
-  - Step 2 (GREEN): Implement scripted replay runner in demo_cli.py with mock mode and artifact output -> run same command -> expected: PASS
+  - Step 2 (GREEN): Implement scripted replay runner in demo_cli.py with deterministic replay, validator-generated corrections, per-run memory namespace cleared at start, and artifact output -> run same command -> expected: PASS
   - Step 3 (REFACTOR): Separate I/O, memory client, and prompt replay modules -> run same command -> expected: PASS
   - Step 4 (MEASURE): Run `cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_scripted_replay.py -k test_scripted_replay_outputs` -> expected: PASS and runtime < 15s
 - Exit Gate Rules
@@ -159,10 +169,10 @@ Iterative Implementation & Test Plan (ISO/IEC/IEEE 12207 + 29119-3)
   - Confidence 60%, Long-term robustness 55%, Internal interactions 3, External interactions 0, Complexity 35%, Feature creep 15%, Technical debt 10%, YAGNI score 30%, MoSCoW: Must, Local/Non-local scope: Local, Architectural changes count: 1
 
 ### Phase P03: Memory-injected rerun and evaluation
-- Scope and Objectives (Impacted REQ-003, REQ-007, REQ-015)
+- Scope and Objectives (Impacted REQ-003, REQ-007)
 - Iterative Execution Steps
   - Step 1 (RED): Create/update TEST-003 in self-learning-guardrails-demo/tests/test_memory_injection.py for REQ-003, REQ-007 -> run `cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_memory_injection.py -k test_turn_reduction` -> expected: FAIL (no injection)
-  - Step 2 (GREEN): Implement memory-injected rerun that reduces correction turns in mock mode -> run same command -> expected: PASS
+  - Step 2 (GREEN): Implement memory-injected rerun that applies stored guardrails before validation to reduce correction turns on the same prompt -> run same command -> expected: PASS
   - Step 3 (REFACTOR): Extract evaluation logic and thresholds to config -> run same command -> expected: PASS
   - Step 4 (MEASURE): Run `cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_memory_injection.py -k test_turn_reduction` -> expected: PASS and turn reduction >= 50%
 - Exit Gate Rules
@@ -248,7 +258,7 @@ Tests (ISO/IEC/IEEE 29119-3)
   - command: `cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_readme_exists.py -k test_readme_exists`
   - fixtures/mocks/data: none
   - deterministic controls: none
-  - pass_criteria: README exists at ../self-learning-guardrails-demo/README.md and contains Setup and Run sections
+  - pass_criteria: README exists at /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/README.md and contains Setup and Run sections
   - expected_runtime: 5s
   - traceability tag: add `# TEST-000` in the test file
 - TEST-001
@@ -265,12 +275,12 @@ Tests (ISO/IEC/IEEE 29119-3)
 - TEST-002
   - name: scripted_replay_outputs
   - type: integration
-  - verifies: REQ-003, REQ-004, REQ-005
+  - verifies: REQ-003, REQ-004, REQ-005, REQ-016
   - location: self-learning-guardrails-demo/tests/test_scripted_replay.py (to be created)
   - command: `cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_scripted_replay.py -k test_scripted_replay_outputs`
-  - fixtures/mocks/data: mock mode enabled via env GUARDRAILS_DEMO_MODE=mock
+  - fixtures/mocks/data: scripted prompt and corrections file in demo folder
   - deterministic controls: set RANDOM_SEED=42 and fixed prompt file
-  - pass_criteria: artifacts directory contains run.json, memory.json, metrics.json with expected keys
+  - pass_criteria: artifacts directory contains run.json, memory.json, metrics.json with expected keys (including run_id and timestamp_utc in metrics.json, and turn_count/correction_turn_count/violations/memory_applied/memory_namespace in run.json); CLI help only lists scripted|live modes and does not include mock or fallback options
   - expected_runtime: 20s
   - traceability tag: add `# TEST-002` in the test file
 - TEST-003
@@ -279,9 +289,9 @@ Tests (ISO/IEC/IEEE 29119-3)
   - verifies: REQ-003, REQ-007
   - location: self-learning-guardrails-demo/tests/test_memory_injection.py (to be created)
   - command: `cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_memory_injection.py -k test_turn_reduction`
-  - fixtures/mocks/data: mock mode enabled via env GUARDRAILS_DEMO_MODE=mock
+  - fixtures/mocks/data: scripted prompt and corrections file in demo folder
   - deterministic controls: set RANDOM_SEED=42 and fixed prompt file
-  - pass_criteria: metrics.json shows correction_turns_after <= correction_turns_before * 0.5
+  - pass_criteria: metrics.json shows correction_turns_before >= 1 and correction_turns_after <= correction_turns_before * 0.5
   - expected_runtime: 20s
   - traceability tag: add `# TEST-003` in the test file
 - TEST-004
@@ -292,7 +302,7 @@ Tests (ISO/IEC/IEEE 29119-3)
   - command: `cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_interactive_mode.py -k test_interactive_fail_fast`
   - fixtures/mocks/data: unset OPENAI_API_KEY
   - deterministic controls: none
-  - pass_criteria: CLI exits with non-zero and prints missing key remediation text
+  - pass_criteria: CLI exits with non-zero and prints missing key remediation text; invalid combo (e.g., --interactive with --mode scripted) fails fast with actionable error
   - expected_runtime: 10s
   - traceability tag: add `# TEST-004` in the test file
 
@@ -312,23 +322,32 @@ Data Contract
 - run.json
   - schema:
     - run_id: str
-    - mode: mock|live
+    - mode: scripted|live
     - prompt_id: str
     - turns: list[{role: str, content: str}]
     - corrections: list[str]
+    - turn_count: int
+    - correction_turn_count: int
+    - violations: list[str]
+    - memory_applied: bool
+    - memory_namespace: str
 - metrics.json
   - schema:
+    - run_id: str
+    - timestamp_utc: str
     - correction_turns_before: int
     - correction_turns_after: int
     - turn_reduction_pct: float
     - runtime_sec: float
   - invariants:
-    - turn_reduction_pct = 100 * (before - after) / before
+    - if correction_turns_before > 0: turn_reduction_pct = 100 * (before - after) / before
+    - if correction_turns_before == 0: turn_reduction_pct = 0.0
 
 Reproducibility
 - Seeds: RANDOM_SEED=42, PYTHONHASHSEED=0
+- Memory namespace: derived from run_id and cleared per scripted run
 - Hardware: laptop class CPU, no GPU required
-- OS: macOS/Linux/WSL supported in mock mode
+- OS: macOS/Linux/WSL supported in scripted mode
 - Container: none required; uses uv + python3.10+ from agent-memory-server
 
 RTM (Requirements Traceability Matrix)
@@ -338,12 +357,14 @@ RTM (Requirements Traceability Matrix)
 | P02 | REQ-003 | TEST-002 | self-learning-guardrails-demo/tests/test_scripted_replay.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_scripted_replay.py -k test_scripted_replay_outputs |
 | P02 | REQ-004 | TEST-002 | self-learning-guardrails-demo/tests/test_scripted_replay.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_scripted_replay.py -k test_scripted_replay_outputs |
 | P02 | REQ-005 | TEST-002 | self-learning-guardrails-demo/tests/test_scripted_replay.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_scripted_replay.py -k test_scripted_replay_outputs |
+| P02 | REQ-016 | TEST-002 | self-learning-guardrails-demo/tests/test_scripted_replay.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_scripted_replay.py -k test_scripted_replay_outputs |
 | P03 | REQ-007 | TEST-003 | self-learning-guardrails-demo/tests/test_memory_injection.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_memory_injection.py -k test_turn_reduction |
 | P04 | REQ-006 | TEST-004 | self-learning-guardrails-demo/tests/test_interactive_mode.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_interactive_mode.py -k test_interactive_fail_fast |
 | P04 | REQ-009 | TEST-004 | self-learning-guardrails-demo/tests/test_interactive_mode.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_interactive_mode.py -k test_interactive_fail_fast |
 | P04 | REQ-014 | TEST-004 | self-learning-guardrails-demo/tests/test_interactive_mode.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_interactive_mode.py -k test_interactive_fail_fast |
 | P01 | REQ-012 | TEST-001 | self-learning-guardrails-demo/tests/test_guardrails_memory.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_guardrails_memory.py -k test_extract_guardrails |
-| P03 | REQ-015 | TEST-003 | self-learning-guardrails-demo/tests/test_memory_injection.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_memory_injection.py -k test_turn_reduction |
+| P02 | REQ-013 | TEST-002 | self-learning-guardrails-demo/tests/test_scripted_replay.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_scripted_replay.py -k test_scripted_replay_outputs |
+| P02 | REQ-015 | TEST-002 | self-learning-guardrails-demo/tests/test_scripted_replay.py | cd /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/agent-memory-server && uv run pytest /home/kirill/hachathons/we-ve-been-through-this-weave-hackathon-260131/self-learning-guardrails-demo/tests/test_scripted_replay.py -k test_scripted_replay_outputs |
 
 Execution Log (Living Document Template)
 - Phase Status (Pending/Done):
@@ -359,10 +380,10 @@ Appendix: ADR Index
 - ADR-001: Use short scripted demo instead of long benchmarks
 - ADR-002: Place demo in repository root as a separate folder
 - ADR-003: Scripted replay first, interactive mode later
-- ADR-004: Mock mode required for deterministic tests
+- ADR-004: Deterministic scripted mode with no fallbacks
 - ADR-005: Fail-fast required for missing config or API keys
 
 Consistency Check
-- RTM covers all REQs: REQ-001..REQ-015 mapped to TEST-000..TEST-004
+- RTM covers all testable REQs: REQ-001..REQ-007, REQ-009, REQ-012..REQ-016 mapped to TEST-000..TEST-004; REQ-008/REQ-010/REQ-011 verified by implementation review/manual checks
 - Every Phase has metrics populated: P00..P04 metrics present
 - Execution steps include explicit verification commands: all RED/GREEN/REFACTOR/MEASURE steps include runnable commands

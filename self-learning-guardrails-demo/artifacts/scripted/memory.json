@@ -1,0 +1,26 @@
+{
+  "architecture_preferences": [
+    "Prefer one clear execution path with explicit modes.",
+    "Keep demo artifacts minimal and deterministic."
+  ],
+  "clarifying_triggers": [
+    {
+      "question": "What exact constraint or output format should be used?",
+      "trigger_terms": [
+        "ambiguous",
+        "unclear",
+        "unspecified"
+      ]
+    }
+  ],
+  "hard_constraints": [
+    "Single deterministic path only; no fallback modes.",
+    "Avoid duplicated logic or redundant steps.",
+    "Fail fast on missing configuration or required inputs."
+  ],
+  "verification_rules": [
+    "Reject outputs that include fallback or retry paths.",
+    "Reject outputs that duplicate steps or sections.",
+    "Ensure missing required env vars cause a hard error."
+  ]
+}

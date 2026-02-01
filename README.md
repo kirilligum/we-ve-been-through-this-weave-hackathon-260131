@@ -2,6 +2,8 @@
 
 One-liner: Self-learning system-architecture and engineering memory for LLM coding assistants that turns historical long discussions into one-shot fixes.
 
+![Claude response with WBTT MCP](./wbtt-claude-good.png)
+
 ![Weave traces dashboard](./weave-claude-tract-wbtt.png)
 
 ## Summary (2-3 sentences)
@@ -31,8 +33,6 @@ flowchart TD
   E --> F["memory_prompt injection"]
   F --> A
 ```
-
-![Claude response with WBTT MCP](./wbtt-claude-good.png)
 
 ## How it is built (agentic logic, data flow, MCP)
 

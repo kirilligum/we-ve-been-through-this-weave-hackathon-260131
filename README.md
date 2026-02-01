@@ -2,7 +2,7 @@
 
 One-liner: Self-learning system-architecture and engineering memory for LLM coding assistants that turns historical long discussions into one-shot fixes.
 
-![Image #1](https://wandb.ai/kirill-igum-prls-co/we-ve-been-through-this-weave-hackathon-260131/weave/traces?view=traces_default)
+![Weave traces dashboard](./weave-claude-tract-wbtt.png)
 
 ## Summary (2-3 sentences)
 

@@ -23,7 +23,7 @@ One-liner: Self-learning system-architecture and engineering memory for LLM codi
 ## System architecture
 
 ```mermaid
-flowchart LR
+flowchart TD
   A["Claude Code"] --> B["Weave Claude plugin (hooks)"]
   B --> C["Weave traces + W&B run artifacts"]
   C --> D["MemEvolve distillation<br/>(memory artifact)"]

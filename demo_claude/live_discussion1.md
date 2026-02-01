@@ -4,3 +4,12 @@ Claude: The test fails because `legacy.py` returns events unchanged while `v2.py
 User: Which handler ran, based on the excerpt?
 Claude: The `legacy_fallback` handler ran, as indicated by `[INFO] selected_pipeline=legacy_fallback` in the artifact excerpt.
 
+User: If I only edit v2, why would the failure persist?
+Claude: Because the test falls back to `legacy_fallback` (which runs `legacy.py`), editing only `v2.py` won't affect the code path being executed—you must fix `legacy.py`'s deduplication logic or ensure `pricing_context.currency` is provided so `v2.py` runs instead.
+
+User: Fix the executed path only, using the given context.
+Claude: Fix `legacy.py`'s `run()` method to deduplicate events before returning them, since that's the code path currently executing.
+
+User: Summarize fix + lesson in one line.
+Claude: Add deduplication logic to `legacy.py`'s `run()` method to remove duplicate events before returning—the fallback handler won't fix itself by editing the primary path.
+

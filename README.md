@@ -1,12 +1,8 @@
 # We've Been Through This (WBTT) -- WeaveHacks 3 -- Self-Improving Agents
 
-One-liner: Smart memory for LLM coding assistants that turns historical long discussions into one-shot fixes.
+One-liner: Smart memory for LLM coding assistants that turns historical long painful discussions into one-shot fixes.
 
-![Claude response with WBTT MCP](./wbtt-claude-good.png)
-
-![Weave traces dashboard](./weave-claude-tract-wbtt.png)
-
-![Redis snapshot](./wbtt-redis.png)
+YouTube demo: https://www.youtube.com/watch?v=Z7IsFoGBSHk
 
 ## Summary (2-3 sentences)
 
@@ -17,6 +13,17 @@ One-liner: Smart memory for LLM coding assistants that turns historical long dis
   - A manual workaround is to add lessons to `AGENTS.md`, create skills, or write custom prompts - but a self-learning system is the natural evolution. To do it properly, you need to study history, extract knowledge, store it for the whole team, and inject it into the prompt.
   - That is what we do: trace Claude with Weave, analyze, store in Redis, and inject back into Claude.
   - The memory is hybrid-smart: the AI figures out which schemas and templates to use.
+
+## Screenshots
+
+Claude one-shot fix: WBTT MCP lets Claude handle complicated tasks in one shot instead of hours of back-and-forth with an LLM coding assistant.
+![Claude response with WBTT MCP](./wbtt-claude-good.png)
+
+Weave tracing: Claude Code traces are automatically picked up in the Weave UI.
+![Weave traces dashboard](./weave-claude-tract-wbtt.png)
+
+Redis storage: memory artifacts are stored in Redis for retrieval and injection.
+![Redis snapshot](./wbtt-redis.png)
 
 ## What it does / why it is useful
 

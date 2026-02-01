@@ -6,6 +6,8 @@ One-liner: Self-learning system-architecture and engineering memory for LLM codi
 
 ![Weave traces dashboard](./weave-claude-tract-wbtt.png)
 
+![Redis snapshot](./wbtt-redis.png)
+
 ## Summary (2-3 sentences)
 
 - Problem

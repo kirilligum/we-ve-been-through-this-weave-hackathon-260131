@@ -81,7 +81,7 @@ run_discussion() {
 ARTIFACT_EXCERPT="$(tr '\n' ' ' < "$CODEBASE_DIR/logs/pytest_artifact_excerpt.txt")"
 
 DISCUSSION_1=(
-  "CI red; test_event_dedupe_idempotent fails. Repo: event_pipeline/dedupe/v2.py, event_pipeline/dedupe/legacy.py, tests/test_dedupe.py. Artifact excerpt: $ARTIFACT_EXCERPT. Note: legacy.py returns events unchanged; v2.py throws if pricing_context is None."
+  "CI red; test_event_dedupe_idempotent fails. Repo: event_pipeline/dedupe/v2.py, event_pipeline/dedupe/legacy.py, tests/test_dedupe.py. Artifact excerpt: $ARTIFACT_EXCERPT. Note: legacy.py run(self, events) only and returns events unchanged; v2.py throws if pricing_context is None."
   "Which handler ran, based on the excerpt?"
   "If I only edit v2, why would the failure persist?"
   "Fix the executed path only, using the given context."
@@ -176,11 +176,13 @@ system_msgs = [m for m in messages if m.get("role") == "system"]
 if system_msgs:
     content = system_msgs[0].get("content", {})
     text = content.get("text", "")
-    print(text)
+    print(text.strip())
 else:
     print("")
 PY
 )"
+
+SYSTEM_MEM="$SYSTEM_LIVE\n\n$SYSTEM_MEM"
 
 DISCUSSION_2=(
   "CI red again; same test. Repo: event_pipeline/dedupe/v2.py, event_pipeline/dedupe/legacy.py. Artifact excerpt: $ARTIFACT_EXCERPT"

@@ -1,6 +1,6 @@
 # We've Been Through This (WBTT) -- WeaveHacks 3 -- Self-Improving Agents
 
-One-liner: Self-learning system-architecture and engineering memory for LLM coding assistants that turns historical long discussions into one-shot fixes.
+One-liner: Smart memory for LLM coding assistants that turns historical long discussions into one-shot fixes.
 
 ![Claude response with WBTT MCP](./wbtt-claude-good.png)
 

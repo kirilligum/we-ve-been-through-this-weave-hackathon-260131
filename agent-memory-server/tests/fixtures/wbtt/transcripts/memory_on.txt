@@ -1,0 +1,2 @@
+1 User: CI is red again; test_event_dedupe_idempotent fails; run ci-19702 has logs.
+1 Claude: Memory says check selected_pipeline in full artifact; it is legacy_fallback, so I derived pricingContext and made legacy delegate to v2; CI passes.

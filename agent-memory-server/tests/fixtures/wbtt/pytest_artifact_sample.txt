@@ -1,0 +1,9 @@
+[INFO] pytest session start
+[INFO] selected_pipeline=legacy_fallback
+[INFO] config: DEDUPER unset
+...
+[WARNING] fallback warning: using legacy_fallback due to v2 exception
+[ERROR] TypeError: pricingContext.currency is undefined
+[ERROR] at dedupe/v2/entrypoint.py:42
+[INFO] legacy dedupe invoked
+...

@@ -1,0 +1,116 @@
+You are operating inside a repo via Claude Code. Your task is to turn the debugging session in THIS conversation into a reusable knowledge artifact and save it as a Markdown file in ./ker/.
+
+GOAL
+Create a single Markdown document in ./ker/ that contains BOTH:
+  1) a Problem Record (conceptual guidance: symptoms, hypotheses, diagnostics, mental models)
+  2) a Known Error Record (KER) (what was learned, decisions made, workaround, permanent fix, verification, scope)
+
+IMPORTANT BEHAVIOR
+- Use the trace + W&B artifacts as primary evidence.
+- Prefer read-only inspection or lightweight diagnostics.
+- Do NOT invent facts. If unknown, write "Unknown" and add a "How to confirm" note.
+- Keep it durable and grep-friendly; do not dump the full transcript.
+
+STEP 1 — COLLECT INFORMATION AND EVIDENCE
+Extract from trace + repo:
+A) Failure context (intent, where it ran)
+B) Error signals (exact 3–10 log lines, symptoms)
+C) Surface area (code paths, configs, services, dependencies)
+D) Diagnostics tried (what failed, what narrowed)
+E) Resolution (workaround vs permanent fix)
+
+STEP 2 — FILE NAMING
+./ker/YYYYMMDD-primary-symptom-root-cause-or-surface.md
+(lowercase, hyphenated, no generic “bug/issue/problem”)
+
+STEP 3 — WRITE THE DOCUMENT
+Use this exact structure:
+
+Known Error Record: <concise descriptive title>
+
+KER slug: YYYYMMDD-primary-symptom-root-cause
+Git reference: <commit hash where fix was applied or issue observed>
+Applies to (scope): <environment/setup; if unknown say so + how to confirm>
+Tags: <short search keywords>
+Anomaly classification (IEEE 1044–inspired, lightweight):
+  - anomaly type: failure | defect | config | dependency | environment | integration | other
+  - reproducibility: always | intermittent | unknown
+  - impact: low | medium | high
+  - likely cause category: config | env | dependency | code | ordering | permissions | tooling | other
+
+Trigger patterns (for fast matching)
+- "<exact error substring>"
+- "<another key message>"
+- <behavioral pattern indicating this issue>
+
+Problem Record (conceptual guidance)
+
+Symptoms
+- …
+- …
+
+Likely causes (ranked mental model)
+1) …
+2) …
+3) …
+
+Diagnostic decision path
+1) Check: …
+   How: …
+   If true: …
+   Next step: …
+2) Check: …
+   How: …
+   If true: …
+   Next step: …
+
+Evidence from this incident
+- key error excerpt:
+  <short excerpt>
+- logs / files involved: <paths>
+- code / config areas involved: <paths>
+- what did NOT work:
+  <attempt> -> <result>
+
+Decisions and tradeoffs
+Options considered
+- option: …
+  description: …
+  pros: …
+  cons / risks: …
+  decision: accepted | rejected | deferred
+  rationale: …
+
+Key constraints influencing decisions
+- …
+
+Non-obvious context
+- …
+
+Workarounds
+- … (or “None”)
+
+Known Error Record (what actually worked)
+
+Root cause (best current understanding)
+- …
+
+Permanent fix
+1) …
+2) …
+
+Verification
+How to confirm the fix:
+  <command or action>
+Expected result:
+  <what success looks like>
+
+Prevention / guardrails
+- …
+- …
+
+STEP 4 — FINAL OUTPUT
+After writing the file:
+- Print the final path
+- Print the first ~20 lines as preview
+- List diagnostics/files/logs inspected

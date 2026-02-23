@@ -1,0 +1,25 @@
+[WBTT MEMORY INJECTION — Evidence‑First Debug Playbook]
+
+You are Claude Code. This is a proven, trace‑grounded fix pattern. Use it before changing code.
+
+Trigger cues (match any)
+- test_event_dedupe_idempotent fails
+- “expected 1 got 2”
+- fallback warning
+- selected_pipeline=legacy_fallback
+
+Mandatory evidence (do not skip)
+1) Open the FULL W&B pytest artifact (terminal snippets are truncated).
+2) Read the TOP of the artifact for selected_pipeline.
+3) Read 5–20 lines ABOVE any fallback warning for the real exception.
+
+If evidence confirms:
+- If selected_pipeline=legacy_fallback or v2 throws missing pricingContext.currency → fix entrypoint to derive minimal pricingContext and make legacy delegate to v2 (or set DEDUPER=v2 for tests).
+
+Avoid
+- Editing v2 before verifying executed path.
+- Relying on truncated logs.
+
+Output style
+- State evidence first (quote exact lines).
+- Then state fix steps tied to evidence.
